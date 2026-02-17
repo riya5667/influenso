@@ -1,4 +1,5 @@
-import { motion } from "framer-motion";
+﻿import { motion } from "framer-motion";
+import RevealSection from "./animations/RevealSection";
 
 const brandLogos = [
   "TechFlow",
@@ -18,24 +19,12 @@ function LogoMarquee() {
 
   return (
     <section id="partners" className="py-14">
-      <motion.div
-        className="section-shell"
-        initial={{ opacity: 0, y: 20 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, amount: 0.5 }}
-        transition={{ duration: 0.5 }}
-      >
+      <RevealSection className="section-shell" amount={0.5}>
         <p className="mb-7 text-center text-xs uppercase tracking-[0.2em] text-slate-400">Infinite Trust Network</p>
-      </motion.div>
-      <motion.div
-        className="logo-marquee overflow-hidden"
-        aria-label="Enterprise brand logos"
-        initial={{ opacity: 0, y: 18 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, amount: 0.3 }}
-        transition={{ duration: 0.55, delay: 0.1 }}
-      >
-        <div className="logo-track flex animate-marquee gap-4 px-4 md:gap-6">
+      </RevealSection>
+
+      <RevealSection className="logo-marquee overflow-hidden" amount={0.3} delay={0.08}>
+        <div className="logo-track flex animate-marquee gap-4 px-4 md:gap-6" aria-label="Enterprise brand logos">
           {trackItems.map((name, idx) => (
             <motion.div
               key={`${name}-${idx}`}
@@ -48,7 +37,7 @@ function LogoMarquee() {
             </motion.div>
           ))}
         </div>
-      </motion.div>
+      </RevealSection>
     </section>
   );
 }

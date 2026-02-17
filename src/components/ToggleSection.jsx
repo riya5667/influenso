@@ -1,5 +1,8 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import RevealSection from "./animations/RevealSection";
+import ScrollParallax from "./animations/ScrollParallax";
+import StaggeredCards from "./animations/StaggeredCards";
 
 const modeContent = {
   brand: {
@@ -37,49 +40,47 @@ function ToggleSection() {
 
   return (
     <section id="features" className="section-shell py-20">
-      <motion.div
-        className={`glass-card relative overflow-hidden border-white/10 bg-gradient-to-br ${theme} p-6 md:p-10`}
-        initial={{ opacity: 0, y: 30, filter: "blur(6px)" }}
-        whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-        viewport={{ once: true, amount: 0.25 }}
-        animate={{ rotateX: mode === "brand" ? 0 : 2, rotateY: mode === "brand" ? 0 : -2 }}
-        transition={{ duration: 0.55, ease: "easeOut" }}
-        style={{ transformStyle: "preserve-3d" }}
-      >
-        <div className="mx-auto mb-8 flex w-fit rounded-full border border-white/20 bg-white/5 p-1.5">
-          <ModeButton label="I am a Brand" isActive={mode === "brand"} onClick={() => setMode("brand")} />
-          <ModeButton label="I am a Creator" isActive={mode === "creator"} onClick={() => setMode("creator")} />
-        </div>
+      <RevealSection amount={0.25}>
+        <motion.div
+          className={`glass-card relative overflow-hidden border-white/10 bg-gradient-to-br ${theme} p-6 md:p-10`}
+          animate={{ rotateX: mode === "brand" ? 0 : 2, rotateY: mode === "brand" ? 0 : -2 }}
+          transition={{ duration: 0.45, ease: "easeOut" }}
+          style={{ transformStyle: "preserve-3d" }}
+        >
+          <ScrollParallax from={-12} to={12} className="pointer-events-none absolute inset-0">
+            <div className="h-full w-full bg-gradient-to-br from-white/6 to-transparent" />
+          </ScrollParallax>
 
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={mode}
-            initial={{ opacity: 0, y: 18, scale: 0.985 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -18, scale: 0.985 }}
-            transition={{ duration: 0.35 }}
-          >
-            <h2 className="font-display text-3xl font-bold text-white md:text-4xl">{active.title}</h2>
-            <p className="mt-3 text-slate-300">{active.subtitle}</p>
+          <div className="relative z-10 mx-auto mb-8 flex w-fit rounded-full border border-white/20 bg-white/5 p-1.5">
+            <ModeButton label="I am a Brand" isActive={mode === "brand"} onClick={() => setMode("brand")} />
+            <ModeButton label="I am a Creator" isActive={mode === "creator"} onClick={() => setMode("creator")} />
+          </div>
 
-            <div className="mt-8 grid gap-4 md:grid-cols-3">
-              {active.cards.map((card, idx) => (
-                <motion.article
-                  key={card.title}
-                  className="glass-card border-white/10 p-5"
-                  initial={{ opacity: 0, y: 18 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.35, delay: idx * 0.08 }}
-                >
-                  <p className="text-sm text-slate-300">{card.title}</p>
-                  <p className="mt-3 font-display text-2xl font-bold text-white">{card.value}</p>
-                  <p className="mt-3 text-sm text-slate-300">{card.desc}</p>
-                </motion.article>
-              ))}
-            </div>
-          </motion.div>
-        </AnimatePresence>
-      </motion.div>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={mode}
+              className="relative z-10"
+              initial={{ opacity: 0, y: 18, scale: 0.985 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -18, scale: 0.985 }}
+              transition={{ duration: 0.35 }}
+            >
+              <h2 className="font-display text-3xl font-bold text-white md:text-4xl">{active.title}</h2>
+              <p className="mt-3 text-slate-300">{active.subtitle}</p>
+
+              <StaggeredCards key={`cards-${mode}`} className="mt-8 grid gap-4 md:grid-cols-3" amount={0.2} stagger={0.08}>
+                {active.cards.map((card) => (
+                  <article key={card.title} className="glass-card border-white/10 p-5">
+                    <p className="text-sm text-slate-300">{card.title}</p>
+                    <p className="mt-3 font-display text-2xl font-bold text-white">{card.value}</p>
+                    <p className="mt-3 text-sm text-slate-300">{card.desc}</p>
+                  </article>
+                ))}
+              </StaggeredCards>
+            </motion.div>
+          </AnimatePresence>
+        </motion.div>
+      </RevealSection>
     </section>
   );
 }
