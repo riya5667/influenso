@@ -17,6 +17,16 @@ body {
   @apply bg-canvas text-slate-100 font-body antialiased;
 }
 
+body.fancy-cursor {
+  cursor: none;
+}
+
+body.fancy-cursor input,
+body.fancy-cursor textarea,
+body.fancy-cursor [contenteditable="true"] {
+  cursor: text;
+}
+
 .section-shell {
   @apply mx-auto w-full max-w-7xl px-6 md:px-10;
 }
@@ -29,7 +39,34 @@ body {
   @apply pointer-events-none fixed inset-0 z-10;
   background: radial-gradient(circle at 20% 10%, rgba(90, 184, 255, 0.12), transparent 34%),
     radial-gradient(circle at 80% 70%, rgba(168, 85, 247, 0.14), transparent 40%),
-    linear-gradient(to bottom, rgba(2, 6, 23, 0.18), rgba(2, 6, 23, 0.38));
+    linear-gradient(to bottom, rgba(2, 6, 23, 0.14), rgba(2, 6, 23, 0.32));
+}
+
+.glow-wordmark {
+  color: #dff7ff;
+  text-shadow: 0 0 8px rgba(56, 189, 248, 0.8), 0 0 20px rgba(125, 211, 252, 0.55), 0 0 36px rgba(168, 85, 247, 0.35);
+}
+
+.cursor-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 9999px;
+  background: radial-gradient(circle, #ffffff 0%, #a5f3fc 70%, rgba(165, 243, 252, 0) 100%);
+  margin-left: -3.5px;
+  margin-top: -3.5px;
+  box-shadow: 0 0 12px rgba(103, 232, 249, 0.95), 0 0 28px rgba(14, 165, 233, 0.55);
+}
+
+.cursor-halo {
+  width: 34px;
+  height: 34px;
+  border-radius: 9999px;
+  margin-left: -17px;
+  margin-top: -17px;
+  border: 1px solid rgba(125, 211, 252, 0.6);
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.2), rgba(56, 189, 248, 0.02));
+  box-shadow: 0 0 22px rgba(56, 189, 248, 0.35), inset 0 0 8px rgba(56, 189, 248, 0.2);
+  backdrop-filter: blur(1px);
 }
 
 .logo-track {

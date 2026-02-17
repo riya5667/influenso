@@ -6,6 +6,8 @@ import LogoMarquee from "./components/LogoMarquee";
 import StatsCounters from "./components/StatsCounters";
 import Footer from "./components/Footer";
 import FlowExperience from "./components/FlowExperience";
+import ScrollStarTrail from "./components/ScrollStarTrail";
+import CustomCursor from "./components/CustomCursor";
 
 const GalaxyBackground = lazy(() => import("./scenes/GalaxyBackground"));
 
@@ -18,6 +20,8 @@ function App() {
         <GalaxyBackground />
       </Suspense>
       <div className="galaxy-overlay" aria-hidden="true" />
+      <ScrollStarTrail />
+      <CustomCursor />
 
       <div className="relative z-20">
         <Navbar onStartFlow={() => setShowFlow(true)} />

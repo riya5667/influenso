@@ -1,18 +1,167 @@
-﻿import { useMemo, useRef } from "react";
+﻿import { useEffect, useMemo, useRef } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
-import { Environment, OrbitControls, useGLTF, useTexture } from "@react-three/drei";
+import { Environment, OrbitControls, QuadraticBezierLine, useGLTF, useTexture } from "@react-three/drei";
 import * as THREE from "three";
 
 const EARTH_MODEL_URL = "/models/earth.glb";
 const EARTH_DIFFUSE_FALLBACK = "/models/earth-diffuse.jpg";
 
-function latLngToVector(lat, lng, radius = 1) {
-  const phi = (90 - lat) * (Math.PI / 180);
-  const theta = (lng + 180) * (Math.PI / 180);
-  const x = -(radius * Math.sin(phi) * Math.cos(theta));
-  const y = radius * Math.cos(phi);
-  const z = radius * Math.sin(phi) * Math.sin(theta);
-  return new THREE.Vector3(x, y, z);
+function fibonacciSpherePoints(count, radius = 1.07) {
+  const points = [];
+  const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+
+  for (let i = 0; i < count; i += 1) {
+    const y = 1 - (i / (count - 1)) * 2;
+    const ringRadius = Math.sqrt(Math.max(0, 1 - y * y));
+    const theta = goldenAngle * i;
+    const x = Math.cos(theta) * ringRadius;
+    const z = Math.sin(theta) * ringRadius;
+    points.push(new THREE.Vector3(x * radius, y * radius, z * radius));
+  }
+
+  return points;
+}
+
+function buildEvenNetwork(points, neighbors = 4, maxDistance = 1.15) {
+  const edges = new Set();
+  const degree = Array(points.length).fill(0);
+  const radiusSq = points[0].lengthSq();
+  const maxAngle = 1.18; // ~67.6 degrees, keeps links local to avoid clipped stubs.
+
+  const connect = (i, j) => {
+    const cos = THREE.MathUtils.clamp(points[i].dot(points[j]) / radiusSq, -1, 1);
+    const angle = Math.acos(cos);
+    if (angle > maxAngle) return;
+
+    const a = Math.min(i, j);
+    const b = Math.max(i, j);
+    const key = `${a}-${b}`;
+    if (!edges.has(key)) {
+      edges.add(key);
+      degree[a] += 1;
+      degree[b] += 1;
+    }
+  };
+
+  for (let i = 0; i < points.length; i += 1) {
+    const distances = [];
+
+    for (let j = 0; j < points.length; j += 1) {
+      if (i === j) continue;
+      distances.push({ j, d: points[i].distanceTo(points[j]) });
+    }
+
+    distances.sort((a, b) => a.d - b.d);
+
+    for (let k = 0; k < neighbors; k += 1) {
+      if (distances[k].d > maxDistance) continue;
+      connect(i, distances[k].j);
+    }
+  }
+
+  // Ensure every node is connected.
+  for (let i = 0; i < points.length; i += 1) {
+    if (degree[i] > 0) continue;
+    let nearest = -1;
+    let minD = Infinity;
+    for (let j = 0; j < points.length; j += 1) {
+      if (i === j) continue;
+      const d = points[i].distanceTo(points[j]);
+      if (d < minD) {
+        minD = d;
+        nearest = j;
+      }
+    }
+    if (nearest >= 0) connect(i, nearest);
+  }
+
+  // Enforce rich local mesh: each node must have at least 4 links.
+  const minDegree = 4;
+  for (let i = 0; i < points.length; i += 1) {
+    if (degree[i] >= minDegree) continue;
+
+    const distances = [];
+    for (let j = 0; j < points.length; j += 1) {
+      if (i === j) continue;
+      distances.push({ j, d: points[i].distanceTo(points[j]) });
+    }
+    distances.sort((a, b) => a.d - b.d);
+
+    for (let k = 0; k < distances.length && degree[i] < minDegree; k += 1) {
+      connect(i, distances[k].j);
+    }
+  }
+
+  // Add multiple horizontal neighbors (similar latitude bands) for lateral mesh.
+  for (let i = 0; i < points.length; i += 1) {
+    const candidates = [];
+    for (let j = 0; j < points.length; j += 1) {
+      if (i === j) continue;
+      const yDiff = Math.abs(points[i].y - points[j].y);
+      if (yDiff > 0.32) continue;
+      candidates.push({ j, d: points[i].distanceTo(points[j]), yDiff });
+    }
+
+    if (!candidates.length) continue;
+    candidates.sort((a, b) => {
+      if (a.yDiff !== b.yDiff) return a.yDiff - b.yDiff;
+      return a.d - b.d;
+    });
+
+    for (let n = 0; n < Math.min(4, candidates.length); n += 1) {
+      connect(i, candidates[n].j);
+    }
+  }
+
+  // Ring links in latitude bands for complete horizontal sweep.
+  const bands = 8;
+  const grouped = Array.from({ length: bands }, () => []);
+  for (let i = 0; i < points.length; i += 1) {
+    const yNorm = (points[i].y + 1) / 2;
+    const band = Math.min(bands - 1, Math.max(0, Math.floor(yNorm * bands)));
+    grouped[band].push(i);
+  }
+
+  for (const group of grouped) {
+    if (group.length < 3) continue;
+
+    group.sort((a, b) => {
+      const azA = Math.atan2(points[a].z, points[a].x);
+      const azB = Math.atan2(points[b].z, points[b].x);
+      return azA - azB;
+    });
+
+    for (let i = 0; i < group.length - 1; i += 1) {
+      const a = group[i];
+      const b = group[i + 1];
+      const c = i + 2 < group.length ? group[i + 2] : -1;
+      connect(a, b);
+      if (c >= 0) connect(a, c);
+    }
+  }
+
+  return [...edges].map((key) => key.split("-").map(Number));
+}
+
+function createStarTexture(size = 128) {
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  const c = size / 2;
+
+  const radial = ctx.createRadialGradient(c, c, 0, c, c, c);
+  radial.addColorStop(0, "rgba(255,255,255,1)");
+  radial.addColorStop(0.16, "rgba(216,247,255,0.95)");
+  radial.addColorStop(0.44, "rgba(134,228,255,0.45)");
+  radial.addColorStop(1, "rgba(134,228,255,0)");
+  ctx.fillStyle = radial;
+  ctx.fillRect(0, 0, size, size);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.needsUpdate = true;
+  return texture;
 }
 
 function EarthModel() {
@@ -58,34 +207,88 @@ function EarthModel() {
   );
 }
 
-function SingleMarker() {
-  const pulseRef = useRef();
-  const markerRef = useRef();
-  const position = useMemo(() => latLngToVector(28.6139, 77.209, 1.08), []);
+function GlowNode({ position, phase = 0, starTexture }) {
+  const coreRef = useRef();
+  const starRef = useRef();
 
   useFrame((state) => {
-    const t = state.clock.elapsedTime;
-    if (pulseRef.current) {
-      const s = 1 + Math.sin(t * 2.2) * 0.22;
-      pulseRef.current.scale.setScalar(s);
-      pulseRef.current.material.opacity = 0.28 + Math.sin(t * 2.2) * 0.08;
+    const t = state.clock.elapsedTime * 1.9 + phase;
+    const pulse = 1 + Math.sin(t) * 0.16;
+
+    if (coreRef.current) {
+      coreRef.current.scale.setScalar(pulse);
+      coreRef.current.material.opacity = 0.9 + Math.sin(t) * 0.08;
     }
-    if (markerRef.current) {
-      markerRef.current.material.opacity = 0.75 + Math.sin(t * 2.2) * 0.2;
+
+    if (starRef.current) {
+      const s = 0.12 + Math.sin(t) * 0.02;
+      starRef.current.scale.set(s, s, 1);
+      starRef.current.material.opacity = 0.42 + Math.sin(t) * 0.06;
     }
+
   });
 
   return (
     <group position={position.toArray()}>
-      <mesh ref={markerRef}>
-        <sphereGeometry args={[0.016, 16, 16]} />
-        <meshBasicMaterial color="#7dd3fc" transparent opacity={0.85} />
+      <mesh ref={coreRef}>
+        <sphereGeometry args={[0.0065, 10, 10]} />
+        <meshBasicMaterial color="#f2fdff" transparent opacity={0.96} blending={THREE.AdditiveBlending} toneMapped={false} />
       </mesh>
-      <mesh ref={pulseRef}>
-        <ringGeometry args={[0.024, 0.042, 40]} />
-        <meshBasicMaterial color="#a855f7" transparent opacity={0.28} side={THREE.DoubleSide} />
-      </mesh>
+      <sprite ref={starRef}>
+        <spriteMaterial
+          map={starTexture}
+          color="#86e8ff"
+          transparent
+          opacity={0.42}
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+          toneMapped={false}
+        />
+      </sprite>
     </group>
+  );
+}
+
+function GlobeNetworkOverlay() {
+  const points = useMemo(() => fibonacciSpherePoints(48, 1.07), []);
+  const starTexture = useMemo(() => createStarTexture(128), []);
+
+  useEffect(() => {
+    return () => {
+      starTexture.dispose();
+    };
+  }, [starTexture]);
+
+  const arcs = useMemo(() => {
+    const pairs = buildEvenNetwork(points, 4, 1.15);
+
+    return pairs.map(([a, b], idx) => {
+      const start = points[a];
+      const end = points[b];
+      const mid = start.clone().add(end).multiplyScalar(0.5).normalize().multiplyScalar(1.108 + (idx % 2) * 0.012);
+      return { start, end, mid, idx };
+    });
+  }, [points]);
+
+  return (
+    <>
+      {arcs.map((arc) => (
+        <QuadraticBezierLine
+          key={`arc-${arc.idx}`}
+          start={arc.start.toArray()}
+          end={arc.end.toArray()}
+          mid={arc.mid.toArray()}
+          color={arc.idx % 2 === 0 ? "#5df4ff" : "#64b5ff"}
+          lineWidth={1.14}
+          transparent
+          opacity={0.84}
+        />
+      ))}
+
+      {points.map((point, idx) => (
+        <GlowNode key={`node-${idx}`} position={point} phase={idx * 0.41} starTexture={starTexture} />
+      ))}
+    </>
   );
 }
 
@@ -101,7 +304,7 @@ function RotatingEarth() {
   return (
     <group ref={ref}>
       <EarthModel />
-      <SingleMarker />
+      <GlobeNetworkOverlay />
     </group>
   );
 }

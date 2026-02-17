@@ -30,7 +30,7 @@ function Footer() {
         >
           <div className="grid gap-10 lg:grid-cols-[1.3fr_2fr]">
             <div className="space-y-5">
-              <img src="/placeholders/logo2.png" alt="Creator Sync logo" className="h-9 w-auto" />
+              <p className="glow-wordmark font-display text-xl font-semibold tracking-[0.18em]">CREATORSYNC</p>
               <h3 className="max-w-sm font-display text-2xl font-bold text-white md:text-3xl">
                 The premium operating system for global brand and creator partnerships.
               </h3>

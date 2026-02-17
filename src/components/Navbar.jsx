@@ -10,8 +10,7 @@ function Navbar({ onStartFlow }) {
     <header className="sticky top-0 z-40 border-b border-white/10 bg-canvas/70 backdrop-blur-xl">
       <div className="section-shell flex h-16 items-center justify-between">
         <a href="#" className="flex items-center gap-3" aria-label="Creator Sync Home">
-          <img src="/placeholders/logo2.png" alt="Creator Sync logo" className="h-8 w-auto" loading="eager" />
-          <span className="font-display text-sm font-semibold tracking-[0.2em] text-white/80">CREATOR SYNC</span>
+          <span className="glow-wordmark font-display text-base font-semibold tracking-[0.2em]">CREATORSYNC</span>
         </a>
         <nav aria-label="Primary navigation" className="hidden md:block">
           <ul className="flex gap-8 text-sm text-slate-300">
